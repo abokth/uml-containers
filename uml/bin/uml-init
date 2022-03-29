@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e; set -o pipefail
+
+cleanup() {
+    /app/bin/halt
+}
+trap cleanup EXIT
+
+declare -a CMD
+
+CMD=(/bin/bash -l)
+
+for f in /app/etc/uml-init.d/*.sh; do
+    if [[ -s "$f" ]]; then
+	. "$f"
+    fi
+done
+
+"${CMD[@]}"

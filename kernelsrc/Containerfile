@@ -1,0 +1,16 @@
+FROM fedorakernelbuild AS verify
+
+RUN mkdir -p /src
+WORKDIR /src
+
+# Mmm, tofu...
+RUN gpg2 --locate-keys torvalds@kernel.org gregkh@kernel.org
+RUN gpg2 --tofu-policy good 38DBBDC86092693E
+RUN curl -OL https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.16.18.tar.xz
+RUN curl -OL https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.16.18.tar.sign
+RUN xz -cd linux-5.16.18.tar.xz | gpg2 --trust-model tofu --verify linux-5.16.18.tar.sign -
+
+FROM fedorakernelbuild
+RUN mkdir -p /src
+COPY --from=verify /src/linux-5.16.18.tar.xz /src/linux-5.16.18.tar.xz
+

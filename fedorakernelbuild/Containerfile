@@ -1,0 +1,4 @@
+FROM fedora:latest
+
+RUN dnf -y update
+RUN dnf -y install xz make gcc flex bison uml_utilities bc bash binutils bzip2 coreutils diffutils elfutils findutils gawk git-core gzip libkcapi-hmaccalc hostname kmod openssl patch perl-Carp perl-interpreter redhat-rpm-config rpm-build tar which dwarves elfutils-libelf-devel openssl-devel

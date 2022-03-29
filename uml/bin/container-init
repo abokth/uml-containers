@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# This container must be run with
+#  podman run --privileged -it <containername>
+
+set -e; set -o pipefail
+
+declare -a CMD
+declare -A KV OPTS
+
+declare -i MEMTOTALKB=$(sed </proc/meminfo -nre 's,^MemTotal: +([0-9]+) kB$,\1,p')
+
+CMD=("/app/bin/linux")
+KV[rootfstype]=hostfs
+OPTS[rw]=true
+OPTS[quiet]=true
+KV[mem]=$((MEMTOTALKB / 1024 / 4))M
+KV[init]=/app/bin/uml-init
+KV[umid]=container
+KV[TERM]=linux
+if [[ -n "$TERM" ]]; then
+    KV[TERM]="$TERM"
+fi
+KV[PATH]=/bin
+
+for f in /app/etc/container-init.d/*.sh; do
+    if [[ -s "$f" ]]; then
+	. "$f"
+    fi
+done
+
+for k in "${!OPTS[@]}"; do
+    if [[ -n "${OPTS[$k]}" ]]; then
+	CMD+=("$k")
+    fi
+done
+
+for k in "${!KV[@]}"; do
+    CMD+=("$k=${KV[$k]}")
+done
+
+exec "${CMD[@]}"

@@ -1,0 +1,6 @@
+FROM uml
+
+RUN dnf -y install iproute bind-utils iputils bridge-utils uml_utilities
+RUN dnf clean all
+
+ADD etc /app/etc
