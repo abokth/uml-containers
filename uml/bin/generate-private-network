@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+
+import random
+import ipaddress
+import sys
+
+def generate_rfc4193_prefix(num):
+    global_rfc_4193_prefix_bytes_len8 = b'\xfd'
+    local_prefix_bytes_len48 = global_rfc_4193_prefix_bytes_len8 + random.randbytes(5)
+    local_subnet_prefix_bytes_len64 = local_prefix_bytes_len48 + random.randbytes(2)
+    host_zero_bytes_len64 = b'\x00\x00\x00\x00\x00\x00\x00\x00'
+    local_subnet_network_bytes_len128 = local_subnet_prefix_bytes_len64 + host_zero_bytes_len64
+    local_subnet_network_string = str(ipaddress.IPv6Network(local_subnet_network_bytes_len128).network_address)
+    local_subnet_network_string_len64 = local_subnet_network_string + '/64'
+    local_subnet_network = ipaddress.IPv6Network(local_subnet_network_string_len64)
+
+    n = 0
+    for h in local_subnet_network.hosts():
+        if n >= num:
+            break
+        yield f"{str(h)}/64"
+        n += 1
+
+def main():
+    num = int(sys.argv[1])
+    for h in generate_rfc4193_prefix(num):
+        print(h)
+
+if __name__ == "__main__":
+    main()
+

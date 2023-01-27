@@ -1,0 +1,38 @@
+From c45b28abdef5f751910a217672650f47e55eadb7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Fri, 12 Jul 2019 12:59:26 +0200
+Subject: [PATCH] Inlude <sys/sysmacros.h> for makedev()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+makedev() is defined in <sys/sysmacros.h>. glibc-2.28 stopped
+including <sys/sysmacros.h> from <sys/types.h> and a build fails
+because of that:
+
+cc -O2 -g -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fexceptions -fstack-protector-strong -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -m64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -D_FILE_OFFSET_BITS=64 -DTUNTAP -o uml_net ethertap.o host.o output.o slip.o uml_net.o tuntap.o
+/usr/bin/ld: host.o: in function `mk_node':
+/home/test/fedora/uml_utilities/tools-20070815/uml_net/host.c:215: undefined reference to `makedev'
+
+This patch fixes it by including <sys/sysmacros.h> explicitly.
+
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ uml_net/host.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/uml_net/host.c b/uml_net/host.c
+index 24e477e..860318e 100644
+--- a/uml_net/host.c
++++ b/uml_net/host.c
+@@ -10,6 +10,7 @@
+ #include <ctype.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include "output.h"
+ #include "host.h"
+ 
+-- 
+2.20.1
+

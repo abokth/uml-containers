@@ -1,0 +1,124 @@
+FROM fedora:latest AS fedorakernelbuild
+
+RUN dnf -y update
+RUN dnf -y install xz make gcc flex bison bc bash binutils bzip2 coreutils diffutils elfutils findutils gawk git-core gzip libkcapi-hmaccalc hostname kmod openssl patch perl-Carp perl-interpreter redhat-rpm-config rpm-build tar which dwarves elfutils-libelf-devel openssl-devel jq readline-devel fuse-devel
+
+
+
+FROM fedorakernelbuild AS verify
+
+RUN mkdir -p /src
+WORKDIR /src
+
+RUN curl -o releases.json https://www.kernel.org/releases.json
+RUN echo -ne 'LATEST_STABLE=' >latest_stable
+ # RUN jq '.latest_stable.version' releases.json | tail -1 | egrep '^"[0-9\.]+"$' | tee -a latest_stable
+RUN cat releases.json |fgrep -C 1 longterm|fgrep version|head -1|cut -d'"' -f4 | tee -a latest_stable
+RUN ls -al
+
+ # Mmm, tofu...
+RUN gpg2 --locate-keys torvalds@kernel.org gregkh@kernel.org
+RUN gpg2 --tofu-policy good 38DBBDC86092693E
+RUN ls -al
+RUN eval $(cat latest_stable); curl -OL https://www.kernel.org/pub/linux/kernel/v5.x/linux-$LATEST_STABLE.tar.xz
+RUN eval $(cat latest_stable); curl -OL https://www.kernel.org/pub/linux/kernel/v5.x/linux-$LATEST_STABLE.tar.sign
+RUN eval $(cat latest_stable); xz -cd linux-$LATEST_STABLE.tar.xz | gpg2 --trust-model tofu --verify linux-$LATEST_STABLE.tar.sign -
+
+FROM fedorakernelbuild AS kernelsrc
+RUN mkdir -p /src
+COPY --from=verify /src/linux-*.tar.xz /src/
+COPY --from=verify /src/releases.json /src/
+
+
+
+FROM kernelsrc AS kinstall
+
+ADD uml/src /src
+WORKDIR /src
+RUN mkdir -p /app/bin
+RUN gcc -o /app/bin/halt halt.c
+RUN mkdir -p /usr/src
+WORKDIR /usr/src
+RUN tar xf /src/linux-*.tar.xz
+RUN mv linux-* linux
+WORKDIR /usr/src/linux
+
+ADD uml/midiuml.config /src/
+RUN cp /src/midiuml.config .
+RUN make ARCH=um allnoconfig KCONFIG_ALLCONFIG=midiuml.config
+RUN make ARCH=um prepare modules_prepare
+
+RUN make -j4 linux ARCH=um
+RUN make -j4 modules ARCH=um
+
+RUN make modules_install INSTALL_MOD_PATH=/ ARCH=um
+RUN mkdir -p /app
+RUN mkdir -p /app/bin
+RUN cp linux /app/bin/linux
+WORKDIR /
+
+FROM fedorakernelbuild AS umlbuild
+COPY --from=kinstall /app/bin/halt /app/bin/halt
+COPY --from=kinstall /app/bin/linux /app/bin/linux
+COPY --from=kinstall /lib/modules /lib/modules
+COPY --from=kinstall /usr/src /usr/src
+COPY --from=kinstall /src /src
+
+WORKDIR /
+
+
+
+
+
+
+
+
+FROM fedorakernelbuild AS umlutilitiessrc
+RUN mkdir -p /src
+RUN mkdir -p /src
+WORKDIR /src
+
+RUN curl -o uml_utilities_20070815.tar.bz2 https://user-mode-linux.sourceforge.net/uml_utilities_20070815.tar.bz2
+RUN sha256sum uml_utilities_20070815.tar.bz2 | fgrep f815f591a1c177729546969acf720958c5fd72b8d4d36bae26fdc5b64669b60e
+
+
+
+
+FROM umlutilitiessrc AS utilitiesbuild
+
+ADD uml/src /src
+WORKDIR /src
+RUN tar xf uml_utilities_20070815.tar.bz2
+RUN mv tools-20070815 umlutilsrc
+WORKDIR umlutilsrc
+RUN patch -p1 <../tools-20070815-Inlude-sys-sysmacros.h-for-makedev.patch
+RUN make
+RUN make install
+RUN mkdir -p /app
+RUN cd /usr; tar zcf /app/uml.tar.gz sbin/jail_uml bin/humfsify bin/uml_* lib*/uml bin/tunctl
+
+
+
+FROM fedora:latest AS uml
+
+RUN dnf -y update
+
+RUN dnf -y install iproute bind-utils iputils bridge-utils hostname slirp4netns
+
+COPY --from=umlbuild /src /src
+COPY --from=umlbuild /app /app
+COPY --from=umlbuild /lib/modules /lib/modules
+
+COPY --from=utilitiesbuild /src /src
+COPY --from=utilitiesbuild /app /app
+WORKDIR /src/umlutilsrc
+RUN tar xf /app/uml.tar.gz -C /usr
+
+WORKDIR /
+
+ADD uml/bin /app/bin
+ADD uml/profile-app.sh /etc/profile.d/app.sh
+ADD uml/ld-app.conf /etc/ld.so.conf.d/app.conf
+RUN /usr/sbin/ldconfig
+
+ENTRYPOINT ["/app/bin/container-init"]

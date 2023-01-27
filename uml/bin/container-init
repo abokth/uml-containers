@@ -1,9 +1,33 @@
 #!/bin/bash
 
 # This container must be run with
-#  podman run --privileged -it <containername>
+#  podman run --privileged --network=slirp4netns:mtu=1500 -it <containername>
 
 set -e; set -o pipefail
+
+declare -a UML_ARGS=()
+declare HOSTNAME; HOSTNAME=$(uname -n); HOSTNAME="${HOSTNAME}-uml"
+while (( $# > 0 )); do
+    case "$1" in
+        --)
+	    shift; break; ;;
+	--hostname)
+	    shift; HOSTNAME="$1"
+	    shift; ;;
+	--hostname=*)
+	    HOSTNAME="$1"
+	    HOSTNAME="${HOSTNAME#*=}"
+	    shift; ;;
+	--help)
+	    cat >&2 <<EOF
+Usage:
+  [--hostname=hostname] <UML kernel command line optionss> [-- <boot options>
+EOF
+	    exit 1; ;;
+	*)
+	    UML_ARGS+=("$1"); shift; ;;
+    esac
+done
 
 declare -a CMD
 declare -A KV OPTS
@@ -23,20 +47,64 @@ if [[ -n "$TERM" ]]; then
 fi
 KV[PATH]=/bin
 
-for f in /app/etc/container-init.d/*.sh; do
-    if [[ -s "$f" ]]; then
-	. "$f"
-    fi
-done
+mount -t tmpfs -o size=$((MEMTOTALKB/2))k,nr_inodes=1048576,inode64 tmpfs /tmp || :
+mount -t tmpfs -o exec,size=$((MEMTOTALKB/2))k,nr_inodes=1048576,inode64 tmpfs /dev/shm || :
+mount -o remount,exec,size=$((MEMTOTALKB/2))k,nr_inodes=1048576 /dev/shm || :
 
-for k in "${!OPTS[@]}"; do
-    if [[ -n "${OPTS[$k]}" ]]; then
-	CMD+=("$k")
-    fi
-done
+td=$(mktemp -d)
+cat >>"$td/init.sh" <<'EOF'
+#!/bin/bash
+
+set -e
+
+EOF
+
+cat >>"$td/init.sh" <<EOF
+hostname "$HOSTNAME"
+
+EOF
+
+# IPv4 NAT-ish access for outbound traffic from UML
+slirp4netns --target-type=bess /tmp/bess.sock >/dev/null 2>&1 &
+besspid=$$
+CMD+=("vec0:transport=bess,dst=/tmp/bess.sock,depth=128,gro=1")
+cat >>"$td/init.sh" <<EOF
+/sbin/ip addr add 10.0.2.100/24 dev vec0
+/sbin/ip link set vec0 up
+/sbin/ip route add default via 10.0.2.2
+
+EOF
+
+# IPv6 private network for container internal communication
+addresses_string=$(/app/bin/generate-private-network 2)
+declare -a addresses=($addresses_string)
+ip tuntap add tap1 mode tap
+ip addr add "${addresses[0]}" dev tap1
+ip link set tap1 up
+CMD+=("vec1:transport=tap,ifname=tap1,depth=128,gro=1")
+cat >>"$td/init.sh" <<EOF
+/sbin/ip addr add "${addresses[1]}" dev vec1
+/sbin/ip link set vec1 up
+
+EOF
+
+for x in exec "${KV[init]}" "$@"; do
+    printf ' %q' "$x"
+done >>"$td/init.sh"
+
+echo >>"$td/init.sh"
+chmod 700 "$td/init.sh"
+KV[init]="$td/init.sh"
+
 
 for k in "${!KV[@]}"; do
     CMD+=("$k=${KV[$k]}")
 done
 
-exec "${CMD[@]}"
+for k in "${!OPTS[@]}"; do
+    if [[ "${OPTS[$k]}" == "true" ]]; then
+	CMD+=("$k")
+    fi
+done
+
+exec "${CMD[@]}" "${UML_ARGS[@]}"
