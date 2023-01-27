@@ -38,3 +38,36 @@ environment.
 
     curl --silent --unix-socket http.sock http://_/
 
+## kAFS in a container
+
+The UML container contains a kAFS enabled kernel. This adds the required userland.
+
+    buildah build -t kafs -f Containerfile-kafs.in
+
+    podman run --privileged -it kafs -- --afs-cell=example.org [-- command [arg ...]]
+
+Note: Currently unresolved issue with rxprc keys from aklog-kafs prevents authenticated access.
+
+### Socket activated web server with authenticated AFS client, in a container
+
+Create a keytab path/to/krb5.keytab and put the principal name in path/to/krb5.keyname.
+
+    cat >path/to/default.vhostconf <<'EOF'
+    VirtualDocumentRoot /afs/example.org/www
+    EOF
+
+    buildah build -t kafshttpd -f Containerfile-kafshttpd.in
+
+    cat >path/to/thiscell.conf <<'EOF'
+    [default]
+    thiscell = example.org
+    EOF
+
+    systemd-socket-activate --listen http.sock \         ## This creates a socket activated environment
+    podman run \                                         ## This is the command which is run when the socket is activated
+      --mount=type=bind,source=path/to/thiscell.conf,destination=/etc/kafs/client.d/thiscell.conf,ro=true \
+      --mount=type=bind,source=path/to/default.vhostconf,destination=/etc/httpd/conf.d/default.vhostconf,ro=true \
+      --mount=type=bind,source=path/to/krb5.keytab,destination=/app/etc/afs/krb5.keytab,ro=true \
+      --mount=type=bind,source=path/to/krb5.keyname,destination=/app/etc/afs/krb5.keyname,ro=true \
+      --privileged --init -it kafshttpd
+
