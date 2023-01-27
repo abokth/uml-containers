@@ -1,0 +1,4 @@
+#include "uml-library.in"
+#include "openafs-library.in"
+#include "httpd-library.in"
+FROM openafshttpd

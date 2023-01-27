@@ -1,0 +1,3 @@
+#include "uml-library.in"
+#include "openafs-library.in"
+FROM openafs

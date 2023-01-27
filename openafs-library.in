@@ -1,0 +1,27 @@
+FROM umlbuild AS build
+
+RUN dnf -y install xz make gcc flex bison bc bash binutils bzip2 coreutils diffutils elfutils findutils gawk git-core gzip libkcapi-hmaccalc hostname kmod openssl patch perl-Carp perl-interpreter redhat-rpm-config rpm-build tar which dwarves elfutils-libelf-devel openssl-devel jq readline-devel fuse-devel
+RUN dnf -y install git-core gcc autoconf automake libtool make flex bison
+RUN dnf -y install glibc-devel krb5-devel perl-devel ncurses-devel pam-devel
+RUN dnf -y install perl-devel perl-ExtUtils-Embed perl-Test-Simple
+RUN dnf -y install krb5-workstation
+
+RUN mkdir -p /src
+WORKDIR /src
+RUN curl -o openafs-latest.html -L https://openafs.org/pages/release/latest.html
+RUN curl -OL http://openafs.org/dl/openafs/1.8.8.1/openafs-1.8.8.1-src.tar.gz
+RUN sha256sum openafs-1.8.8.1-src.tar.gz | fgrep 85bf9e3f49f1b3b9f3828f0538830d73256479e92083dfeaa13cca1f12130b41
+
+RUN tar xf openafs-1.8.8.1-src.tar.gz
+WORKDIR /src/openafs-1.8.8.1
+RUN ./configure --prefix=/app ARCH=um && make ARCH=um -j 4 && make ARCH=um install
+
+FROM uml AS openafs
+
+RUN dnf -y install kmod krb5-workstation
+COPY --from=build /app /app
+
+ADD openafs/bin /app/bin
+
+RUN /sbin/ldconfig
+

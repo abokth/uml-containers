@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -e; set -o pipefail
+
+cleanup() {
+    umount /afs || :
+    /app/sbin/afsd -shutdown || :
+    exec /app/bin/halt
+}
+trap cleanup EXIT
+
+declare NO_HALT=""
+declare AFS_CELL=""
+while (( $# > 0 )); do
+    case "$1" in
+        --)
+	   shift; break; ;;
+	--afs-cell)
+	    shift; AFS_CELL="$1"
+	    shift; ;;
+	--afs-cell=*)
+	    AFS_CELL="$1"
+	    AFS_CELL="${AFS_CELL#*=}"
+	    shift; ;;
+	--no-halt)
+	    shift; NO_HALT=true; ;;
+	*)
+	    cat >&2 <<EOF
+Unknown option: $1
+Valid arguments:
+  [--afs-cell=<cell>] [--no-halt] [-- cmd ...]
+EOF
+	    exit 1; ;;
+    esac
+done
+
+
+# Configure system.
+mount -t tmpfs -o rw,seclabel,nosuid,nodev,size=$((MEMTOTALKB/2))k,nr_inodes=1048576,inode64 tmpfs /tmp || :
+mount -t proc -o rw,nosuid,nodev,noexec,relatime proc /proc || :
+mount -t sysfs -o rw,seclabel,nosuid,nodev,noexec,relatime sysfs /sys || :
+mkdir -p /dev/shm || :
+mount -t tmpfs -o rw,seclabel,nosuid,nodev,size=$((MEMTOTALKB/2))k,nr_inodes=1048576,inode64 tmpfs /dev/shm || :
+mkdir -p /dev/pts || :
+mount -t devpts -o rw,seclabel,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 devpts /dev/pts || :
+mount -t tmpfs -o rw,seclabel,nosuid,nodev,size=$((MEMTOTALKB/2))k,nr_inodes=819200,mode=755,inode64 tmpfs /run || :
+mount -t cgroup2 -o rw,seclabel,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot cgroup2 /sys/fs/cgroup || :
+mount -t pstore -o rw,seclabel,nosuid,nodev,noexec,relatime pstore /sys/fs/pstore || :
+
+
+# Configure and mount AFS.
+mkdir -p /afs
+mkdir /run/afs
+mkdir -p /app/etc/openafs
+echo >/app/etc/openafs/cacheinfo /afs:/run/afs:1024000
+if [[ -n "$AFS_CELL" ]]; then
+    echo "$AFS_CELL" >/app/etc/openafs/ThisCell
+    echo ">$AFS_CELL" >/app/etc/openafs/CellServDB
+else
+    AFS_CELL=$(cat /app/etc/openafs/ThisCell)
+fi
+host -t AFSDB "$AFS_CELL" >/dev/null 2>&1 || :
+/sbin/insmod /app/lib/openafs/libafs-*.ko
+env LD_LIBRARY_PATH=/app/lib /app/sbin/afsd -memcache -dynroot-sparse -dynroot -afsdb -fakestat
+
+declare -a CMD=()
+if (( $# == 0 )); then
+    CMD+=("/bin/bash" "-l")
+fi
+
+# /app/bin/halt must be run elsewhere to exit the container.
+if [[ -n "$NO_HALT" ]]; then
+    exec "${CMD[@]}" "$@"
+fi
+
+"${CMD[@]}" "$@"
+
