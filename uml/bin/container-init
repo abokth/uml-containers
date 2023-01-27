@@ -88,6 +88,8 @@ cat >>"$td/init.sh" <<EOF
 
 EOF
 
+echo >/run/server-ip "${addresses[1]%/*}"
+
 for x in exec "${KV[init]}" "$@"; do
     printf ' %q' "$x"
 done >>"$td/init.sh"

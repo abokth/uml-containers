@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e; set -o pipefail
+
+proxypid=$$
+if [[ "$proxypid" == "1" ]]; then
+    # pid 1 does not have default signal handlers, cannot kill systemd-socket-proxyd
+    echo >&2 "Warning: Run container with --init to enable shutdown on httpd errors."
+fi
+
+{
+    if /app/bin/run-httpd 3</dev/null; then
+	echo "Exiting."
+    else
+	echo >&2 "httpd failure"
+    fi
+    echo "Stopping process $proxypid"
+    kill -HUP $proxypid
+    sleep 1
+    kill -TERM $proxypid
+    sleep 1
+    kill -KILL $proxypid
+} &
+
+server_ip=$(/sbin/ip addr show scope global | sed -nre 's,^ +inet[^ ]* ([^ /]+)/.*$,\1,p'|tail -1)
+for t in 1 1 1 2 3 5 8 13 21 34 0; do
+    if timeout 4 nc >/dev/null 2>&1 <<<'HEAD / HTTP/1.1' "$server_ip" 80; then break; fi
+    if [[ "$t" == "0" ]]; then
+	echo >&2 "Startup timeout."
+	exit 1
+    fi
+    sleep $t
+done
+
+exec /usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=5min "$server_ip":80

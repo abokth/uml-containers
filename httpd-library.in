@@ -1,0 +1,32 @@
+FROM uml AS umlhttpd
+
+RUN dnf -y install httpd systemd netcat
+
+RUN ln -sf /proc/self/fd/1 /var/log/httpd/access_log
+RUN ln -sf /proc/self/fd/2 /var/log/httpd/error_log
+
+ADD httpd/server.conf        /etc/httpd/conf.d/zz-20-server.conf
+ADD httpd/default-vhost.conf /etc/httpd/conf.d/zz-30-default-vhost.conf
+ADD httpd/default.vhostconf  /etc/httpd/conf.d/default.vhostconf
+ADD unixhttpd/bin /app/bin
+
+HEALTHCHECK CMD /app/bin/health-check || exit 1
+ENTRYPOINT ["/app/bin/proxy-httpd"]
+
+ADD umlhttpd/bin /app/bin
+
+FROM fedora:latest AS unixhttpd
+
+RUN dnf -y install httpd systemd netcat
+
+RUN ln -sf /proc/self/fd/1 /var/log/httpd/access_log
+RUN ln -sf /proc/self/fd/2 /var/log/httpd/error_log
+
+ADD httpd/server.conf        /etc/httpd/conf.d/zz-20-server.conf
+ADD httpd/default-vhost.conf /etc/httpd/conf.d/zz-30-default-vhost.conf
+ADD httpd/default.vhostconf  /etc/httpd/conf.d/default.vhostconf
+ADD unixhttpd/bin /app/bin
+
+HEALTHCHECK CMD /app/bin/health-check || exit 1
+ENTRYPOINT ["/app/bin/proxy-httpd"]
+
