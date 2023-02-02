@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir /run/httpd
+mkdir -p /run/httpd
 
 exec /usr/sbin/httpd -DFOREGROUND "$@"
 
