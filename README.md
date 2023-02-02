@@ -20,7 +20,7 @@ Build the image and start the socket listener:
 
     systemd-socket-activate --listen http.sock \         ## This creates a socket activated environment
     podman run \                                         ## This is the command which is run when the socket is activated
-      --privileged --init -it unixhttpd
+      --init -it unixhttpd
 
 ### Test access
 
