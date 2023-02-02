@@ -14,13 +14,25 @@
 
 ### Image, socket listener and container
 
-Build the image and start the socket listener:
+Build the image and start the socket listener. The examples use
+systemd-socket-activate to simulate a systemd socket activated service
+environment.
+
+#### httpd in a container
 
     buildah build -t unixhttpd -f Containerfile-unixhttpd.in
 
-    systemd-socket-activate --listen http.sock \         ## This creates a socket activated environment
-    podman run \                                         ## This is the command which is run when the socket is activated
+    systemd-socket-activate --listen http.sock \
+    podman run \
       --init -it unixhttpd
+
+#### httpd in a UML container
+
+    buildah build -t umlhttpd -f Containerfile-umlhttpd.in
+
+    systemd-socket-activate --listen http.sock \
+    podman run \
+      --init -it --privileged umlhttpd
 
 ### Test access
 
