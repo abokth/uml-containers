@@ -46,7 +46,8 @@ The UML container contains a kAFS enabled kernel. This adds the required userlan
 
     podman run --privileged -it kafs -- --afs-cell=example.org [-- command [arg ...]]
 
-Note: Currently unresolved issue with rxprc keys from aklog-kafs prevents authenticated access.
+    kinit user@EXAMPLE.ORG
+    aklog-kafs
 
 ## OpenAFS in a container
 
@@ -54,6 +55,8 @@ Note: Currently unresolved issue with rxprc keys from aklog-kafs prevents authen
 
     podman run --privileged -it openafs -- --afs-cell=example.org [-- command [arg ...]]
 
+    kinit user@EXAMPLE.ORG
+    aklog
 
 ## Socket activated web server with authenticated AFS client, in a container
 

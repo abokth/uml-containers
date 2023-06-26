@@ -64,6 +64,9 @@ echo "$AFS_CELL" >/proc/fs/afs/rootcell
 mount -t afs none /afs -o dyn
 
 declare -a CMD=()
+
+CMD+=(keyctl session umlafs)
+
 if (( $# == 0 )); then
     CMD+=("/bin/bash" "-l")
 fi
