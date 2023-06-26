@@ -20,8 +20,8 @@ RUN ls -al
 RUN gpg2 --locate-keys torvalds@kernel.org gregkh@kernel.org
 RUN gpg2 --tofu-policy good 38DBBDC86092693E
 RUN ls -al
-RUN eval $(cat latest_stable); curl -OL https://www.kernel.org/pub/linux/kernel/v5.x/linux-$LATEST_STABLE.tar.xz
-RUN eval $(cat latest_stable); curl -OL https://www.kernel.org/pub/linux/kernel/v5.x/linux-$LATEST_STABLE.tar.sign
+RUN eval $(cat latest_stable); curl -OL https://www.kernel.org/pub/linux/kernel/v6.x/linux-$LATEST_STABLE.tar.xz
+RUN eval $(cat latest_stable); curl -OL https://www.kernel.org/pub/linux/kernel/v6.x/linux-$LATEST_STABLE.tar.sign
 RUN eval $(cat latest_stable); xz -cd linux-$LATEST_STABLE.tar.xz | gpg2 --trust-model tofu --verify linux-$LATEST_STABLE.tar.sign -
 
 FROM fedorakernelbuild AS kernelsrc
