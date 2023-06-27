@@ -9,11 +9,11 @@ RUN dnf -y install krb5-workstation
 RUN mkdir -p /src
 WORKDIR /src
 RUN curl -o openafs-latest.html -L https://openafs.org/pages/release/latest.html
-RUN curl -OL http://openafs.org/dl/openafs/1.8.8.1/openafs-1.8.8.1-src.tar.gz
-RUN sha256sum openafs-1.8.8.1-src.tar.gz | fgrep 85bf9e3f49f1b3b9f3828f0538830d73256479e92083dfeaa13cca1f12130b41
+RUN curl -OL https://openafs.org/dl/openafs/candidate/1.8.10pre1/openafs-1.8.10pre1-src.tar.gz
+RUN sha256sum openafs-1.8.10pre1-src.tar.gz | fgrep 03332aa9f3fc1fb3d5c55501f49ee84083a146f0e33accc51cd7733de850d781
 
-RUN tar xf openafs-1.8.8.1-src.tar.gz
-WORKDIR /src/openafs-1.8.8.1
+RUN tar xf openafs-1.8.10pre1-src.tar.gz
+WORKDIR /src/openafs-1.8.10pre1
 RUN ./configure --prefix=/app ARCH=um && make ARCH=um -j 4 && make ARCH=um install
 
 FROM uml AS openafs
