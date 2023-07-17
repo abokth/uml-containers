@@ -32,7 +32,7 @@ ADD unixhttpd/bin /app/bin
 HEALTHCHECK CMD /app/bin/health-check || exit 1
 ENTRYPOINT ["/app/bin/proxy-httpd"]
 
-FROM kafs AS httpd
+FROM kafs AS kafshttpd
 
 RUN dnf -y install httpd systemd netcat iproute
 
