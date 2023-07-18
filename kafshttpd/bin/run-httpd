@@ -3,25 +3,21 @@
 mkdir /run/httpd
 
 if [[ -s /app/etc/afs/httpd.keytab && -s /app/etc/afs/httpd.keyname ]]; then
-    mkdir --mode=700 /run/httpd/afs
-    chown apache:root /run/httpd/afs
-    cp /app/etc/afs/httpd.keytab /run/httpd/afs/httpd.keytab
-    chmod 600 /run/httpd/afs/httpd.keytab
-    chown apache:root /run/httpd/afs/httpd.keytab
+    mkdir --mode=700 /run/httpd-tokens
     keyname=$(cat /app/etc/afs/httpd.keyname)
 
     {
 	while :; do
-	    sudo -u apache env KRB5CCNAME=FILE:/run/httpd/afs/afshttpd.cc kinit -k -t /run/httpd/afs/httpd.keytab "$keyname" || break
-	    sudo -u apache env KRB5CCNAME=FILE:/run/httpd/afs/afshttpd.cc /usr/bin/aklog-kafs || break
-	    touch /run/httpd/afs/tokens-timestamp
+	    env KRB5CCNAME=FILE:/run/httpd-tokens/afshttpd.cc kinit -k -t /app/etc/afs/httpd.keytab "$keyname" || break
+	    env KRB5CCNAME=FILE:/run/httpd-tokens/afshttpd.cc /usr/bin/aklog-kafs || break
+	    touch /run/httpd-tokens/timestamp
 	    sleep $(($RANDOM % 60 + 3500))
 	done
 	/usr/sbin/httpd -k stop
     } &
 
     for t in 1 2 3 5 8 13 21 34 ""; do
-	if [[ -e /run/httpd/afs/tokens-timestamp ]]; then
+	if [[ -e /run/httpd-tokens/timestamp ]]; then
 	    break
 	fi
 	if [[ -z "$t" ]]; then
