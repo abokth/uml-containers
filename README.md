@@ -60,7 +60,7 @@ The UML container contains a kAFS enabled kernel. This adds the required userlan
 
 ## Socket activated web server with authenticated AFS client, in a container
 
-Create a keytab path/to/krb5.keytab and put the principal name in path/to/krb5.keyname.
+Create a keytab path/to/krb5.keytab.
 
     cat >path/to/default.vhostconf <<'EOF'
     VirtualDocumentRoot /afs/example.org/www
@@ -84,7 +84,6 @@ Build the image and start the socket listener:
       --mount=type=bind,source=path/to/thiscell.conf,destination=/etc/kafs/client.d/thiscell.conf,ro=true \
       --mount=type=bind,source=path/to/default.vhostconf,destination=/etc/httpd/conf.d/default.vhostconf,ro=true \
       --mount=type=bind,source=path/to/krb5.keytab,destination=/app/etc/afs/krb5.keytab,ro=true \
-      --mount=type=bind,source=path/to/krb5.keyname,destination=/app/etc/afs/krb5.keyname,ro=true \
       --privileged --init -it kafshttpd
 
 #### OpenAFS
@@ -100,7 +99,6 @@ Build the image and start the socket listener:
       --mount=type=bind,source=path/to/CellServDB,destination=/app/etc/openafs/CellServDB,ro=true \
       --mount=type=bind,source=path/to/default.vhostconf,destination=/etc/httpd/conf.d/default.vhostconf,ro=true \
       --mount=type=bind,source=path/to/krb5.keytab,destination=/app/etc/afs/krb5.keytab,ro=true \
-      --mount=type=bind,source=path/to/krb5.keyname,destination=/app/etc/afs/krb5.keyname,ro=true \
       --privileged --init -it openafshttpd
 
 ### Test access

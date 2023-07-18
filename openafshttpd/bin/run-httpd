@@ -2,13 +2,13 @@
 
 mkdir /run/httpd
 
-if [[ -s /app/etc/afs/httpd.keytab && -s /app/etc/afs/httpd.keyname ]]; then
+if [[ -s /app/etc/afs/httpd.keytab ]]; then
     mkdir --mode=700 /run/httpd/afs
     chown apache:root /run/httpd/afs
     cp /app/etc/afs/httpd.keytab /run/httpd/afs/httpd.keytab
     chmod 600 /run/httpd/afs/httpd.keytab
     chown apache:root /run/httpd/afs/httpd.keytab
-    keyname=$(cat /app/etc/afs/httpd.keyname)
+    keyname=$(echo -e 'read_kt /app/etc/afs/httpd.keytab\nlist' | ktutil | sed -nre 's,^ *[0-9]+ +[0-9]+ +([^ ]+) *$,\1,p' | sort -u | tail -1)
 
     {
 	while :; do
