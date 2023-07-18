@@ -13,7 +13,7 @@ if [[ -s /app/etc/afs/httpd.keytab && -s /app/etc/afs/httpd.keyname ]]; then
     {
 	while :; do
 	    sudo -u apache env KRB5CCNAME=FILE:/run/httpd/afs/afshttpd.cc kinit -k -t /run/httpd/afs/httpd.keytab "$keyname" || break
-	    sudo -u apache env KRB5CCNAME=FILE:/run/httpd/afs/afshttpd.cc /app/bin/aklog-kafs || break
+	    sudo -u apache env KRB5CCNAME=FILE:/run/httpd/afs/afshttpd.cc /usr/bin/aklog-kafs || break
 	    touch /run/httpd/afs/tokens-timestamp
 	    sleep $(($RANDOM % 60 + 3500))
 	done
