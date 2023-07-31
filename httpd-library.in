@@ -51,6 +51,13 @@ ENTRYPOINT ["/app/bin/proxy-httpd"]
 ADD umlhttpd/bin /app/bin
 ADD kafshttpd/bin /app/bin
 
+FROM kafshttpd AS kafsphphttpd
+
+RUN dnf install -y php php-fpm php-opcache
+RUN dnf -y clean all
+
+ADD kafsphphttpd/bin /app/bin
+
 FROM openafs AS openafshttpd
 
 RUN dnf -y install httpd systemd netcat

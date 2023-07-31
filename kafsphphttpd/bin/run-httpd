@@ -1,0 +1,34 @@
+#!/bin/bash
+
+mkdir /run/httpd
+mkdir /run/php-fpm
+
+if [[ -s /app/etc/afs/httpd.keytab ]]; then
+    mkdir --mode=700 /run/httpd-tokens
+    keyname=$(echo -e 'read_kt /app/etc/afs/httpd.keytab\nlist' | ktutil | sed -nre 's,^ *[0-9]+ +[0-9]+ +([^ ]+) *$,\1,p' | sort -u | tail -1)
+
+    {
+	while :; do
+	    env KRB5CCNAME=FILE:/run/httpd-tokens/afshttpd.cc kinit -k -t /app/etc/afs/httpd.keytab "$keyname" || break
+	    env KRB5CCNAME=FILE:/run/httpd-tokens/afshttpd.cc /usr/bin/aklog-kafs || break
+	    touch /run/httpd-tokens/timestamp
+	    sleep $(($RANDOM % 60 + 3500))
+	done
+	/usr/sbin/httpd -k stop
+    } &
+
+    for t in 1 2 3 5 8 13 21 34 ""; do
+	if [[ -e /run/httpd-tokens/timestamp ]]; then
+	    break
+	fi
+	if [[ -z "$t" ]]; then
+	    echo >&2 "Could not get tokens."
+	    exit 1
+	fi
+	sleep $t
+    done
+fi
+
+/usr/sbin/php-fpm
+exec /usr/sbin/httpd -DFOREGROUND "$@"
+

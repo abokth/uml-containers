@@ -1,0 +1,4 @@
+#include "uml-library.in"
+#include "kafs-library.in"
+#include "httpd-library.in"
+FROM kafsphphttpd
