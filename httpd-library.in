@@ -53,7 +53,7 @@ ADD kafshttpd/bin /app/bin
 
 FROM kafshttpd AS kafsphphttpd
 
-RUN dnf install -y php php-fpm php-opcache php-mysqlnd
+RUN dnf install -y php php-fpm php-opcache php-mysqlnd php-pgsql
 
 ADD kafsphphttpd/bin /app/bin
 
