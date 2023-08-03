@@ -8,6 +8,7 @@ if [[ "$proxypid" == "1" ]]; then
     echo >&2 "Warning: Run container with --init to enable shutdown on httpd errors."
 fi
 
+# Does not work.
 container_ip=$(/sbin/ip addr show scope global | sed -nre 's,^ +inet[^ ]* ([^ /]+)/.*$,\1,p'|tail -1)
 echo "RemoteIPInternalProxy $container_ip" >/etc/httpd/conf.d/zz-10-internalproxy.conf
 
