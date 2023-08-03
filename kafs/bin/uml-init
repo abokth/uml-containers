@@ -63,6 +63,10 @@ host -t AFSDB "$AFS_CELL" >/dev/null 2>&1 || :
 echo "$AFS_CELL" >/proc/fs/afs/rootcell
 mount -t afs none /afs -o dyn
 
+if [[ -s /app/bin/post-afs-hook.sh ]]; then
+    . /app/bin/post-afs-hook.sh
+fi
+
 declare -a CMD=()
 
 CMD+=(keyctl session umlafs)

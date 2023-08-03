@@ -63,6 +63,10 @@ host -t AFSDB "$AFS_CELL" >/dev/null 2>&1 || :
 /sbin/insmod /app/lib/openafs/libafs-*.ko
 env LD_LIBRARY_PATH=/app/lib /app/sbin/afsd -memcache -dynroot-sparse -dynroot -afsdb -fakestat
 
+if [[ -s /app/bin/post-afs-hook.sh ]]; then
+    . /app/bin/post-afs-hook.sh
+fi
+
 declare -a CMD=()
 if (( $# == 0 )); then
     CMD+=("/bin/bash" "-l")
