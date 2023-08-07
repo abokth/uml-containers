@@ -1,9 +1,6 @@
-FROM umlbuild AS build
-
-FROM uml AS kafs
+FROM ${BUILD_REPO}uml AS kafs
 
 RUN dnf -y install krb5-workstation kafs-client keyutils kmod
-COPY --from=build /app /app
 
 ADD kafs/bin /app/bin
 

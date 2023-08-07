@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e; set -o pipefail
+
+buildah bud -t uml Containerfile-uml.in
+
+v=$(buildah unshare <<'EOF'
+path=$(podman image mount localhost/uml)
+basename $path/src/linux-*.tar.*
+podman image unmount localhost/uml >/dev/null
+EOF
+)
+v="${v#linux-}"
+kernel_version="${v%.tar.*}"
+date=$(date '+%Y%m%d')
+
+buildah bud --build-arg=BUILD_REPO=localhost/ -t kafshttpd Containerfile-kafshttpd.in
+buildah bud --build-arg=BUILD_REPO=localhost/ -t kafsphphttpd Containerfile-kafsphphttpd.in
+
+podman push localhost/uml quay.io/abokth/uml:uml-$kernel_version-$date
+podman push localhost/kafshttpd quay.io/abokth/uml:kafshttpd-$kernel_version-$date
+podman push localhost/kafsphphttpd quay.io/abokth/uml:kafsphphttpd-$kernel_version-$date
+
