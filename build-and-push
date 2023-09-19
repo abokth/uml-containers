@@ -2,6 +2,8 @@
 
 set -e; set -o pipefail
 
+type >/dev/null buildah podman
+
 buildah bud -t uml Containerfile-uml.in
 
 v=$(buildah unshare <<'EOF'
