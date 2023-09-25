@@ -28,7 +28,7 @@ echo 'RemoteIPInternalProxy fd::/8' >/etc/httpd/conf.d/zz-10-internalproxy.conf
 for t in 1 1 1 1 1 1 1 1 1 2 3 5 8 13 21 34 0; do
     if [[ -s /run/server-ip ]]; then
 	server_ip=$(cat /run/server-ip)
-	if timeout 4 nc >/dev/null 2>&1 <<<'HEAD / HTTP/1.1' "$server_ip" 80; then break; fi
+	if timeout 4 curl --head --fail --silent -o /dev/null "http://[$server_ip]:80/"; then break; fi
     fi
     if [[ "$t" == "0" ]]; then
 	echo >&2 "Startup timeout."
@@ -36,5 +36,20 @@ for t in 1 1 1 1 1 1 1 1 1 2 3 5 8 13 21 34 0; do
     fi
     sleep $t
 done
+
+{
+    while kill -0 $$; do
+	for t in 1 1 1 2 3 0; do
+	    if timeout 4 curl --head --fail --silent -o /dev/null "http://[$server_ip]:80/"; then break; fi
+	    if [[ "$t" == "0" ]]; then
+		echo >&2 "Health check failed."
+		kill $proxypid
+		exit 1
+	    fi
+	    sleep $t
+	done
+	sleep 60
+    done
+} &
 
 exec /usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=5min "$server_ip":80

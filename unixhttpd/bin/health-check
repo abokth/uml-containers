@@ -4,7 +4,7 @@ set -e; set -o pipefail
 
 server_ip=$(/sbin/ip addr show scope global | sed -nre 's,^ +inet[^ ]* ([^ /]+)/.*$,\1,p'|tail -1)
 for t in 1 1 2 3 5 8 13 21 34 0; do
-    if timeout 4 nc >/dev/null 2>&1 <<<'HEAD / HTTP/1.1' "$server_ip" 80; then break; fi
+    if timeout 4 curl --head --fail --silent -o /dev/null "http://[$server_ip]:80/"; then break; fi
     if [[ "$t" == "0" ]]; then
 	echo >&2 "Startup timeout."
 	exit 1
